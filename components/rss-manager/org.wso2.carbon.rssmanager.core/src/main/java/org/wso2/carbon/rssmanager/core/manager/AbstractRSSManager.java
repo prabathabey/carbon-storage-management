@@ -83,6 +83,10 @@ public abstract class AbstractRSSManager implements RSSManager {
     protected void closeJPASession() {
         getEntityManager().getJpaUtil().closeEnitityManager();
     }
+    
+    protected void joinTransaction(){
+		getEntityManager().getJpaUtil().getJPAEntityManager().joinTransaction();
+	}
 
     protected void overrideJPASession(EntityBaseDAO dao) {
         dao.overrideJPASession(getEntityManager().getJpaUtil().getJPAEntityManager());
@@ -148,6 +152,17 @@ public abstract class AbstractRSSManager implements RSSManager {
                     "associated with '" + rssInstanceName + "' RSS instance is null.");
         }
         return dsWrapper.getConnection(dbName);
+    }
+        
+    protected DataSource getDataSource(String rssInstanceName,
+                                       String dbName) throws RSSManagerException {
+    	 RSSInstanceDSWrapper dsWrapper =
+                 getEnvironment().getDSWrapperRepository().getRSSInstanceDSWrapper(rssInstanceName);
+         if (dsWrapper == null) {
+             throw new RSSManagerException("Cannot fetch a connection. RSSInstanceDSWrapper " +
+                     "associated with '" + rssInstanceName + "' RSS instance is null.");
+         }
+         return dsWrapper.getDataSource(dbName);
     }
 
     public boolean deleteTenantRSSData() throws RSSManagerException {

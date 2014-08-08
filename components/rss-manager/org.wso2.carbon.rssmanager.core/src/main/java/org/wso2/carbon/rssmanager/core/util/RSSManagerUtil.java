@@ -31,6 +31,7 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import javax.naming.InitialContext;
 import javax.sql.DataSource;
@@ -41,7 +42,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.axiom.om.OMElement;
-import org.apache.axiom.om.util.Base64;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -146,8 +146,7 @@ public final class RSSManagerUtil {
              * 16. Thus, to adhere the aforementioned constraint as well as to give the username
              * an unique identification based on the tenant domain, we append a hash value that is
              * created based on the tenant domain */
-            byte[] bytes = RSSManagerHelper.intToByteArray(tenantDomain.hashCode());
-            return username + "_" + Base64.encode(bytes);
+            return username + "_" + RSSManagerHelper.getDatabaseUserPostfix();
         }
         return username;
     }
@@ -177,8 +176,7 @@ public final class RSSManagerUtil {
     }
 
     public static String composeDatabaseUrl(RSSInstance rssInstance, String databaseName) {
-        return rssInstance.getDataSourceConfig().getRdbmsConfiguration().getUrl() + "/" +
-                databaseName;
+        return createDBURL(databaseName, rssInstance.getServerURL());
     }
 
     private static DataSourceMetaInfo.DataSourceDefinition createDSXMLDefinition(
@@ -287,6 +285,33 @@ public final class RSSManagerUtil {
         }
     }
 
+    private static String createDatabaseUrl(String dbName, String dbType, String serverUrl){
+        if(serverUrl != null && ! serverUrl.isEmpty()){
+            String databaseUrl;
+            if(RSSManagerConstants.RSSManagerProviderTypes.RM_PROVIDER_TYPE_MYSQL.equals(dbType) || RSSManagerConstants.RSSManagerProviderTypes.RM_PROVIDER_TYPE_POSTGRES.equals(dbType)
+            		|| RSSManagerConstants.RSSManagerProviderTypes.RM_PROVIDER_TYPE_H2.equals(dbType)){
+                if (serverUrl.contains("?")) {
+                    databaseUrl = serverUrl.substring(0, serverUrl.lastIndexOf("?")).concat("/"+dbName+"?").concat(serverUrl.substring(serverUrl.lastIndexOf("?") + 1));
+                } else if (serverUrl.endsWith("/")) {
+                    databaseUrl = serverUrl.concat(dbName);
+                }else{
+                    databaseUrl = serverUrl.concat("/"+dbName);
+                }
+            }else if(RSSManagerConstants.RSSManagerProviderTypes.RM_PROVIDER_TYPE_SQLSERVER.equals(dbType)){
+                if (serverUrl.contains(";")){
+                    databaseUrl = serverUrl.substring(0, serverUrl.indexOf(";")).concat(";databaseName="+dbName+";").concat(serverUrl.substring(serverUrl.indexOf(";") + 1));
+                }else {
+                    databaseUrl = serverUrl.concat(";databaseName="+dbName);
+                }
+            }else {
+                databaseUrl = serverUrl;
+            }
+            return databaseUrl;
+        }
+        return serverUrl;
+    }
+
+
     public static synchronized void cleanupResources(ResultSet rs, PreparedStatement stmt,
                                                      Connection conn) {
         if (rs != null) {
@@ -378,6 +403,50 @@ public final class RSSManagerUtil {
                 org.wso2.carbon.utils.multitenancy.MultitenantConstants.SUPER_TENANT_ID);
     }
     
+    public static String createDBURL(String dbName, String url){
+		StringBuilder dbURL = new StringBuilder();
+		String trimedURL = url.trim();
+		dbURL.append(trimedURL);
+		boolean endWithSlash = trimedURL.endsWith("/");
+		if(endWithSlash){
+			dbURL.append(dbName);
+		}else{
+			dbURL.append("/").append(dbName.trim());
+		}
+
+		return dbURL.toString();
+	}
+    
+    public static void applyInstanceChanges(RSSInstance instanceFromDB, RSSInstance instanceFromConfig){
+		if(!instanceFromDB.getServerURL().equalsIgnoreCase(instanceFromConfig.getServerURL())){
+			instanceFromDB.setServerURL(instanceFromConfig.getServerURL());		
+		}
+		
+		if(!instanceFromDB.getAdminPassword().equalsIgnoreCase(instanceFromConfig.getAdminPassword())){
+			instanceFromDB.setAdminPassword(instanceFromConfig.getAdminPassword());
+		}
+		
+		if(!instanceFromDB.getAdminUserName().equalsIgnoreCase(instanceFromConfig.getAdminUserName())){
+			instanceFromDB.setAdminUserName(instanceFromConfig.getAdminUserName());
+		}
+		
+		if(!instanceFromDB.getDbmsType().equalsIgnoreCase(instanceFromConfig.getDbmsType())){
+			instanceFromDB.setDbmsType(instanceFromConfig.getDbmsType());
+		}
+		
+		if(!instanceFromDB.getDriverClassName().equalsIgnoreCase(instanceFromConfig.getDriverClassName())){
+			instanceFromDB.setDriverClassName(instanceFromConfig.getDriverClassName());
+		}
+		
+		if(!instanceFromDB.getInstanceType().equalsIgnoreCase(instanceFromConfig.getInstanceType())){
+			instanceFromDB.setInstanceType(instanceFromConfig.getInstanceType());
+		}
+		
+		if(!instanceFromDB.getServerCategory().equalsIgnoreCase(instanceFromConfig.getServerCategory())){
+			instanceFromDB.setServerCategory(instanceFromConfig.getServerCategory());
+		}
+	}
+    
     /**create Info DTOs from entities**/
     
     public static void createRSSInstanceInfo(RSSInstanceInfo info, RSSInstance entity){
@@ -407,7 +476,7 @@ public final class RSSManagerUtil {
 		}
     	
     	info.setType(entity.getType());
-    	info.setUrl(entity.getRssInstance().getServerURL());
+        info.setUrl(createDatabaseUrl(entity.getName(),entity.getRssInstance().getDbmsType(),entity.getRssInstance().getServerURL()));
 
     }
     
@@ -417,7 +486,7 @@ public final class RSSManagerUtil {
     	}
     	info.setName(entity.getName());
     	info.setPassword(entity.getPassword());
-    	List<RSSInstance> instances = entity.getInstances();
+    	Set<RSSInstance> instances = entity.getInstances();
     	if(instances != null && !instances.isEmpty()){
     		String instanceName = instances.iterator().next().getName();
     		if(RSSManagerConstants.RSSManagerTypes.RM_TYPE_SYSTEM.equalsIgnoreCase(entity.getType())){

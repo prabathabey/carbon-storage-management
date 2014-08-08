@@ -89,6 +89,9 @@ public class RSSInstance extends AbstractEntity<Integer, RSSInstance>{
     @Column(name="TENANT_ID")
     private Long tenantId;
     
+    @Column(name="DRIVER_CLASS")
+    private String driverClassName;
+    
     @ManyToOne(cascade={CascadeType.PERSIST,CascadeType.REFRESH,CascadeType.MERGE}, fetch=FetchType.EAGER)
     @JoinColumn(name = "ENVIRONMENT_ID", nullable = false)
     private Environment environment;
@@ -96,8 +99,6 @@ public class RSSInstance extends AbstractEntity<Integer, RSSInstance>{
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "rssInstance", 
             orphanRemoval = true)
     private List<Database> databases;
-
-    private DataSource dataSource;
 
     @Transient
     private String environmentName;
@@ -233,8 +234,19 @@ public class RSSInstance extends AbstractEntity<Integer, RSSInstance>{
 	public void setVersion(Long version) {
 		this.version = version;
 	}
+	
+	
 
-	@Override
+	public String getDriverClassName() {
+		return driverClassName;
+	}
+
+	public void setDriverClassName(String driverClassName) {
+		this.driverClassName = driverClassName;
+	}
+
+
+	/*@Override
     public int hashCode() {
 	    final int prime = 31;
 	    int result = super.hashCode();
@@ -263,12 +275,39 @@ public class RSSInstance extends AbstractEntity<Integer, RSSInstance>{
 	    } else if (!name.equals(other.name))
 		    return false;
 	    return true;
-    }
+    }*/
+	
+	
 
 	@Override
     public String toString() {
 	    return "RSSInstance [version=" + version + ", id=" + id + ", name=" + name + ", dbmsType=" + dbmsType + ", instanceType=" + instanceType + ", serverCategory=" + serverCategory + ", serverURL=" + serverURL + ", adminUserName=" + adminUserName + ", adminPassword=" + adminPassword + ", environmentName=" + environmentName + "]";
     }
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		RSSInstance other = (RSSInstance) obj;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
+			return false;
+		return true;
+	}
 
 
 	
