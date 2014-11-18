@@ -19,6 +19,7 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib uri="http://wso2.org/projects/carbon/taglibs/carbontags.jar" prefix="carbon" %>
 <%@ page import="org.wso2.carbon.cassandra.mgt.stub.ks.xsd.KeyspaceInformation" %>
+<%@ page import="org.wso2.carbon.cassandra.mgt.ui.CassandraKeyspaceAdminClient" %>
 <%@ page import="org.wso2.carbon.cassandra.mgt.ui.CassandraAdminClientConstants" %>
 <%@ page import="org.wso2.carbon.cassandra.mgt.ui.CassandraAdminClientHelper" %>
 <%@ page import="org.wso2.carbon.ui.CarbonUIMessage" %>
@@ -26,10 +27,42 @@
 
 <%
     response.setHeader("Cache-Control", "no-cache");
-
+    String envName = null;
+    String clusterName = null;
     String keyspace = request.getParameter("name");
+    String[] environments = null;
+    String[] clusters = null;
     if (keyspace == null) {
         keyspace = "";
+    }
+    try{
+        CassandraKeyspaceAdminClient cassandraKeyspaceAdminClient =
+            new CassandraKeyspaceAdminClient(config.getServletContext(), session);
+        envName = request.getParameter("envName");
+        if(envName == null){
+            envName = (String) session.getAttribute("envName");
+            if(envName == null){
+                envName = "DEFAULT";
+            }
+        }
+        session.setAttribute("envName", envName);
+        environments = (String[]) session.getAttribute("environments");
+        if(environments == null){
+            environments = cassandraKeyspaceAdminClient.getAllEnvironments();
+            session.setAttribute("environments", environments);
+        }
+        clusterName = request.getParameter("cluster");
+        clusters = cassandraKeyspaceAdminClient.getClusterList(envName);
+        if(clusterName == null)
+            clusterName = clusters[0];
+        session.setAttribute("clusterName", clusterName);
+    } catch (Exception e) {
+        CarbonUIMessage uiMsg = new CarbonUIMessage(CarbonUIMessage.ERROR, e.getMessage(), e);
+        session.setAttribute(CarbonUIMessage.ID, uiMsg); %>
+<script type="text/javascript">
+window.location.href = "../admin/error.jsp";
+</script>
+<%
     }
 
     String mode = request.getParameter("mode");
@@ -94,6 +127,55 @@
             <% } %>
         </h2>
         <div id="workArea">
+            <div>
+                <fmt:message key="cassandra.environment.name"/>
+                <select id="envCombo" name="envCombo" onchange="onEnvComboChange(this)"
+                        style="margin-left:24px; width:100px;">
+                <%
+                    if (envName == null) {
+                        envName = environments[0];
+                    }
+                    for (String env : environments) {
+                        if(env == null) continue;
+                        if (env.equals(envName.trim())) {
+                            %>
+                            <option id="<%=env%>" value="<%=env%>" selected="selected"><%=env%>
+                            </option>
+                            <%
+                        } else {
+                            %>
+                            <option id="<%=env%>" value="<%=env%>"><%=env%>
+                            </option>
+                            <%
+                        }
+                    }
+                %>
+                </select><br>
+            </div>
+            <div style="margin-top:8px">
+                <fmt:message key="cassandra.cluster.name"/>
+                &nbsp;&nbsp;&nbsp;&nbsp;
+                <select id="clusterCombo" name="clusterCombo" onchange="onClusterComboChange(this)"
+                        style="margin-left: 40px; width:100px;">
+                <%
+                    for (String cluster : clusters) {
+                        if(cluster == null)
+                            continue;
+                        if (clusterName != null && cluster.equals(clusterName.trim())) {
+                            %>
+                            <option id="<%=cluster%>" value="<%=cluster%>" selected="selected"><%=cluster%>
+                            </option>
+                            <%
+                        } else {
+                            %>
+                            <option id="<%=cluster%>" value="<%=cluster%>"><%=cluster%>
+                            </option>
+                            <%
+                        }
+                    }
+                %>
+                </select><br><br>
+            </div>
             <table class="styledLeft noBorders" cellspacing="0" cellpadding="0" border="0">
                 <tbody>
                 <tr>
@@ -109,9 +191,17 @@
 
                                                value="<%=keyspaceInformation.getName().trim()%>"
                                                readonly="readonly"/>
+                                                   <script type="text/javascript">
+                                                       document.getElementById("envCombo").disabled=true;
+                                                       document.getElementById("clusterCombo").disabled=true;
+                                                   </script>
                                         <%} else { %>
                                         <input id="ks_editor_name" name="ks_editor_name" class="longInput"
                                                value="<%=keyspaceInformation.getName().trim()%>"/>
+                                               <script type="text/javascript">
+                                                  document.getElementById("envCombo").disabled=false;
+                                                  document.getElementById("clusterCombo").disabled=false;
+                                              </script>
                                         <% } %>
                                     </td>
                                 </tr>
@@ -243,4 +333,14 @@
             </table>
         </div>
     </div>
+            <script type="text/javascript">
+                function onEnvComboChange(combo) {
+                    var opt = combo.options[combo.selectedIndex].value;
+                    window.location = 'add_edit_keyspace.jsp?envName=' + opt;
+                }
+                function onClusterComboChange(combo) {
+                    var cluster = combo.options[combo.selectedIndex].value;
+                    window.location = 'add_edit_keyspace.jsp?envName=<%=envName%>&cluster=' + cluster;
+                }
+            </script>
 </fmt:bundle>

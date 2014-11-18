@@ -24,6 +24,7 @@ import org.wso2.carbon.base.api.ServerConfigurationService;
 import org.wso2.carbon.cassandra.dataaccess.DataAccessService;
 import org.wso2.carbon.cassandra.mgt.CassandraMBeanLocator;
 import org.wso2.carbon.cassandra.mgt.CassandraServerManagementException;
+import org.wso2.carbon.cassandra.mgt.environment.EnvironmentManager;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -46,10 +47,31 @@ public class CassandraAdminDataHolder {
     /* For accessing cassandra(component) server configuration */
     private RealmService realmService;
 
+    /*whether the components initialized property or not*/
+    private boolean isInitialized = false;
+
     private CassandraMBeanLocator mbeanLocator;
 
     private ConfigurationContextService configCtxService;
     private ServerConfigurationService serverConfigurationService;
+
+    private EnvironmentManager environmentManager;
+
+    public EnvironmentManager getEnvironmentManager() {
+        return environmentManager;
+    }
+
+    public void setEnvironmentManager(EnvironmentManager environmentManager) {
+        this.environmentManager = environmentManager;
+    }
+
+    public boolean isInitialized() {
+        return isInitialized;
+    }
+
+    public void setInitialized(boolean isInitialized) {
+        this.isInitialized = isInitialized;
+    }
 
     public static CassandraAdminDataHolder getInstance() {
         return thisInstance;
@@ -75,7 +97,7 @@ public class CassandraAdminDataHolder {
         this.configCtxService = configCtxService;
     }
 
-    public ServerConfigurationService getServerConfigurationService(){
+    public ServerConfigurationService getServerConfigurationService() {
         return serverConfigurationService;
     }
 
@@ -94,7 +116,7 @@ public class CassandraAdminDataHolder {
     }
 
     public void setRealmService(RealmService realmService) {
-        this.realmService = realmService;
+			this.realmService = realmService;
     }
 
     public CassandraMBeanLocator getCassandraMBeanLocator() {

@@ -175,7 +175,7 @@ public class RSSManagerHelper {
         if (url != null) {
             String prefix = url.split(":")[1];
             if (RSSManagerConstants.MYSQL_PREFIX.equals(prefix)) {
-                return RSSManagerConstants.MYSQL_XA_DRIVER;
+                return RSSManagerConstants.MYSQL_DRIVER;
             } else if (RSSManagerConstants.ORACLE_PREFIX.equals(prefix)) {
                 return RSSManagerConstants.ORACLE_DRIVER;
             }
@@ -195,7 +195,7 @@ public class RSSManagerHelper {
     public static String getDatabaseUserPostfix() {
         String tenantDomain = CarbonContext.getThreadLocalCarbonContext().getTenantDomain();
         byte[] bytes = RSSManagerHelper.intToByteArray(tenantDomain.hashCode());
-        return org.apache.commons.codec.binary.Base64.encodeBase64URLSafeString(bytes);
+        return org.apache.commons.codec.binary.Base64.encodeBase64URLSafeString(bytes).replace("_", "$");
     }
     public static String processDomainName(String domainName) {
         if (domainName == null || "".equals(domainName)) {

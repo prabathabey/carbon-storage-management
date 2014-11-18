@@ -36,6 +36,8 @@
     String mode = request.getParameter("mode");
 
     String keyspace = request.getParameter("keyspace");
+    String envName = (String) session.getAttribute("envName");
+    String clusterName = (String) session.getAttribute("clusterName");
 
     String index = request.getParameter("index");
     if (index == null) {
@@ -58,7 +60,7 @@
             session.setAttribute(CarbonUIMessage.ID, uiMsg);
          %>
         <script type="text/javascript">
-             var callbackUrl = "keyspace_dashboard.jsp?name=<%=keyspace%>";
+             var callbackUrl = "keyspace_dashboard.jsp?name=<%=keyspace%>&cluster=<%=clusterName%>";
              showErrorDialog('<%=e.getMessage()%>', callbackUrl);
          </script>
 
@@ -683,11 +685,11 @@
 <tr>
     <td class="buttonRow" colspan="3">
         <input id="saveCFButton" class="button" name="saveCFButton" type="button"
-               onclick="savecf('<%=mode%>','<%=index%>','<%=keyspace%>','<%=id%>'); return false;"
+               onclick="savecf('<%=mode%>','<%=index%>','<%=clusterName%>','<%=keyspace%>','<%=id%>'); return false;"
                href="#"
                value="<fmt:message key="cassandra.actions.save"/>"/>
         <input id="cancelCFButton" class="button" name="cancelCFButton" type="button"
-               onclick="location.href = 'keyspace_dashboard.jsp?name=' + '<%=keyspace%>';"
+               onclick="location.href = 'keyspace_dashboard.jsp?name=<%=keyspace%>&cluster=<%=clusterName%>';"
                href="#"
                value="<fmt:message key="cassandra.actions.cancel"/>"/>
 

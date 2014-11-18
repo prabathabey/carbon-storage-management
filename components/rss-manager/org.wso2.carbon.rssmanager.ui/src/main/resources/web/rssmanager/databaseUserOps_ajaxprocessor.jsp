@@ -32,15 +32,18 @@
 <%@ taglib uri="http://wso2.org/projects/carbon/taglibs/carbontags.jar" prefix="carbon" %>
 
 <%
-    RSSManagerClient client;
+	RSSManagerClient client;
     String flag = request.getParameter("flag");
     String templateName = request.getParameter("privilegeTemplateName");
     String rssInstanceName = request.getParameter("rssInstanceName");
     String databaseName = request.getParameter("databaseName");
     String envName = request.getParameter("envName");
+    String instanceType = request.getParameter("instanceType");
 
     session.setAttribute("rssInstanceName", rssInstanceName);
     session.setAttribute("databaseName", databaseName);
+    session.setAttribute("instanceType", instanceType);
+
     if (envName != null) {
         session.setAttribute("envName", envName);
     }
@@ -122,7 +125,7 @@
             user.setName(username);
             user.setPassword(password);
             user.setRssInstanceName(rssInstanceName);
-
+            user.setType(instanceType.trim());
             client.createDatabaseUser(envName, user);
 
             PrintWriter pw = response.getWriter();
@@ -141,7 +144,7 @@
         String username = request.getParameter("username");
         username = (username != null) ? username : "";
         try {
-            client.dropDatabaseUser(envName, rssInstanceName, username,RSSManagerConstants.RSSManagerTypes.RM_TYPE_SYSTEM);
+            client.dropDatabaseUser(envName, rssInstanceName, username,instanceType.trim());
 
             PrintWriter pw = response.getWriter();
             msg = "Database user '" + username + "' has been successfully dropped";
@@ -165,6 +168,7 @@
         user.setName(username);
         user.setPassword(password);
         user.setRssInstanceName(rssInstanceName);
+        user.setType(instanceType);
 
         MySQLPrivilegeSetInfo privileges = new MySQLPrivilegeSetInfo();
         privileges.setSelectPriv(selectPriv);
@@ -202,69 +206,105 @@
     } else if ("createDS".equals(flag)) {
         String username = request.getParameter("username");
         username = (username != null) ? username : "";
+        String dsName = request.getParameter("dsName");
+        
+       			try {
+			UserDatabaseEntryInfo entry = new UserDatabaseEntryInfo();
+			entry.setRssInstanceName(rssInstanceName);
+			entry.setDatabaseName(databaseName);
+			entry.setUsername(username);
+			entry.setType(instanceType);
+			client.createCarbonDataSource(envName, dsName, entry);
 
-        try {
-            UserDatabaseEntryInfo entry = new UserDatabaseEntryInfo();
-            entry.setRssInstanceName(rssInstanceName);
-            entry.setDatabaseName(databaseName);
-            entry.setUsername(username);
-            entry.setType(RSSManagerConstants.RSSManagerTypes.RM_TYPE_SYSTEM);
-            client.createCarbonDataSource(envName, entry);
+			PrintWriter pw = response.getWriter();
+			msg = "Datasource named '" + dsName
+					+ "' has been successfully created";
+			xml = "<Response><Message>" + msg
+					+ "</Message><Environment>" + envName
+					+ "</Environment></Response>";
+			pw.write(xml);
+			pw.flush();
+		} catch (Exception e) {
+			PrintWriter pw = response.getWriter();
+			msg = e.getMessage();
+			xml = "<Response><Message>" + msg
+					+ "</Message><Environment>" + envName
+					+ "</Environment></Response>";
+			pw.write(xml);
+			pw.flush();
+		}
+	} else if ("attach".equals(flag)) {
+		String username = request.getParameter("username");
+		username = (username != null) ? username : "";
 
-            PrintWriter pw = response.getWriter();
-            msg = "Datasource has been successfully created";
-            xml = "<Response><Message>" + msg + "</Message><Environment>" + envName + "</Environment></Response>" ;
-            pw.write(xml);
-            pw.flush();
-        } catch (Exception e) {
-            PrintWriter pw = response.getWriter();
-            msg = e.getMessage();
-            xml = "<Response><Message>" + msg + "</Message><Environment>" + envName + "</Environment></Response>" ;
-            pw.write(xml);
-            pw.flush();
-        }
-    } else if ("attach".equals(flag)) {
-        String username = request.getParameter("username");
-        username = (username != null) ? username : "";
+		try {
+			client.attachUserToDatabase(envName, rssInstanceName,
+					databaseName, username, templateName, instanceType);
 
-        try {
-            client.attachUserToDatabase(envName, rssInstanceName,databaseName, username, templateName,RSSManagerConstants.RSSManagerTypes.RM_TYPE_SYSTEM);
+			PrintWriter pw = response.getWriter();
+			msg = "Database user '" + username
+					+ "' has been successfully attached to the "
+					+ "database '" + databaseName + "'";
+			xml = "<Response><Message>" + msg
+					+ "</Message><Environment>" + envName
+					+ "</Environment></Response>";
+			pw.write(xml);
+			pw.flush();
+		} catch (Exception e) {
+			PrintWriter pw = response.getWriter();
+			msg = e.getMessage();
+			xml = "<Response><Message>" + msg
+					+ "</Message><Environment>" + envName
+					+ "</Environment></Response>";
+			pw.write(xml);
+			pw.flush();
+		}
+	} else if ("detach".equals(flag)) {
+		String username = request.getParameter("username");
+		username = (username != null) ? username : "";
+		try {
+			client.detachUserFromDatabase(envName, rssInstanceName,
+					databaseName, username, instanceType);
 
-            PrintWriter pw = response.getWriter( );
-            msg = "Database user '" + username + "' has been successfully attached to the " +
-                    "database '" + databaseName + "'";
-            xml = "<Response><Message>" + msg + "</Message><Environment>" + envName + "</Environment></Response>" ;
-            pw.write(xml);
-            pw.flush();
-        } catch (Exception e) {
-            PrintWriter pw = response.getWriter();
-            msg = e.getMessage();
-            xml = "<Response><Message>" + msg + "</Message><Environment>" + envName + "</Environment></Response>" ;
-            pw.write(xml);
-            pw.flush();
-        }
-    } else if ("detach".equals(flag)) {
-        String username = request.getParameter("username");
-        username = (username != null) ? username : "";
-        try {
-            client.detachUserFromDatabase(envName, rssInstanceName, databaseName, username,RSSManagerConstants.RSSManagerTypes.RM_TYPE_SYSTEM);
+			PrintWriter pw = response.getWriter();
+			msg = "Database user '" + username
+					+ "' has been successfully detached from the "
+					+ "database '" + databaseName + "'";
+			xml = "<Response><Message>" + msg
+					+ "</Message><Environment>" + envName
+					+ "</Environment></Response>";
+			pw.write(xml);
+			pw.flush();
+		} catch (Exception e) {
+			PrintWriter pw = response.getWriter();
+			msg = e.getMessage();
+			xml = "<Response><Message>" + msg
+					+ "</Message><Environment>" + envName
+					+ "</Environment></Response>";
+			pw.write(xml);
+			pw.flush();
+		}
+	} else if ("editUser".equals(flag)) {
+		String username = request.getParameter("username");
+		String password = request.getParameter("password");
+		username = (username != null) ? username : "";
+		password = (password != null) ? password : "";
 
-            PrintWriter pw = response.getWriter();
-            msg = "Database user '" + username + "' has been successfully detached from the " +
-                    "database '" + databaseName + "'";
-            xml = "<Response><Message>" + msg + "</Message><Environment>" + envName + "</Environment></Response>";
-            pw.write(xml);
-            pw.flush();
-        } catch (Exception e) {
-            PrintWriter pw = response.getWriter();
-            msg = e.getMessage();
-            xml = "<Response><Message>" + msg + "</Message><Environment>" + envName + "</Environment></Response>" ;
-            pw.write(xml);
-            pw.flush();
-        }
+		DatabaseUserInfo user = new DatabaseUserInfo();
+		user.setName(username);
+		user.setPassword(password);
+		user.setRssInstanceName(rssInstanceName);
+		user.setType(instanceType.trim());
+		client.editDatabaseUser(envName, user);
 
-    }
-
+		PrintWriter pw = response.getWriter();
+		msg = "Database user '" + user.getName()
+				+ "' has been successfully saved";
+		xml = "<Response><Message>" + msg + "</Message><Environment>"
+				+ envName + "</Environment></Response>";
+		pw.write(xml);
+		pw.flush();
+	}
 %>
 
 

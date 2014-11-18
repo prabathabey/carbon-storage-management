@@ -19,189 +19,237 @@
 
 package org.wso2.carbon.rssmanager.core.environment.dao.impl;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.rssmanager.common.RSSManagerConstants;
+import org.wso2.carbon.rssmanager.core.dao.exception.RSSDAOException;
+import org.wso2.carbon.rssmanager.core.environment.Environment;
+import org.wso2.carbon.rssmanager.core.environment.dao.EnvironmentDAO;
+import org.wso2.carbon.rssmanager.core.util.RSSManagerUtil;
+
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
-import javax.persistence.Query;
+/**
+ * Environment DAO implementation
+ */
+public class EnvironmentDAOImpl implements EnvironmentDAO {
+	private static final Log log = LogFactory.getLog(EnvironmentDAOImpl.class);
+	private DataSource dataSource;
 
-import org.wso2.carbon.rssmanager.core.dao.exception.RSSDAOException;
-import org.wso2.carbon.rssmanager.core.dao.util.EntityManager;
-import org.wso2.carbon.rssmanager.core.dao.util.RSSDAOUtil;
-import org.wso2.carbon.rssmanager.core.dto.restricted.RSSInstance;
-import org.wso2.carbon.rssmanager.core.environment.Environment;
-import org.wso2.carbon.rssmanager.core.environment.dao.EnvironmentDAO;
-import org.wso2.carbon.rssmanager.core.exception.RSSManagerException;
-import org.wso2.carbon.rssmanager.core.jpa.persistence.dao.AbstractEntityDAO;
-
-public class EnvironmentDAOImpl extends AbstractEntityDAO<Integer, Environment> implements EnvironmentDAO {
-	
-	private EntityManager entityManager;
-	
-	
-
-    public EnvironmentDAOImpl(EntityManager entityManager) {
-    	super(entityManager.getJpaUtil().getJPAEntityManager());
-		this.entityManager = entityManager;
-		
+	public EnvironmentDAOImpl() {
+		dataSource = RSSManagerUtil.getDataSource();
 	}
-    
-    public void addEnvironment(Environment environment) throws RSSManagerException {
-    	super.insert(environment);
-    }
-    
-    public void removeEnvironment(Environment environment) throws RSSManagerException {
-    	super.remove(environment);
-    }
-    
-    public boolean isEnvironmentExist(String environmentName) throws RSSManagerException {
-    	Query query = this.getEntityManager().getJpaUtil().getJPAEntityManager().createQuery(" SELECT en from Environment en where en.name = :name ");
-		query.setParameter("name", environmentName);
-		
-		boolean isExist = false;
-		Environment environment = null;
-		List<Environment> result = query.getResultList();
-		if(result != null && !result.isEmpty()){
-			environment = result.iterator().next();
-			isExist = true;
-		}		
-		
-		return isExist;
-    }
-    
-    public Environment getEnvironment(String environmentName) throws RSSManagerException {
-    	Query query = this.getEntityManager().getJpaUtil().getJPAEntityManager().createQuery(" select en from Environment en left join fetch en.rssInstanceEntities  where en.name = :name ");
-		query.setParameter("name", environmentName);
-		
-		Environment environment = null;
-		List<Environment> result = query.getResultList();
-		if(result != null && !result.isEmpty()){
-			environment = result.iterator().next();			
-		}		
-		
-		return environment;
-    }
-    
-    @Override
-    public Set<Environment> getEnvironments(Set<String> names)throws RSSManagerException{
-    	Set<Environment> environments = new HashSet<Environment>();
-    	
-    	Query query = this.getEntityManager().getJpaUtil().getJPAEntityManager().createQuery(" SELECT en FROM Environment en left join fetch en.rssInstanceEntities   WHERE  en.name IN :evname ");
-		query.setParameter("evname", names);
-		
-		List<Environment> result = query.getResultList();
-		if(result != null){
-			environments.addAll(result);
-		}	
-    	
-    	return environments;
-    }
-    
-    @Override
-    public Set<Environment> getAllEnvironments()throws RSSManagerException{
-    	Set<Environment> environments = new HashSet<Environment>();
-    	
-    	Query query = this.getEntityManager().getJpaUtil().getJPAEntityManager().createQuery(" SELECT en FROM Environment en left join fetch en.rssInstanceEntities  ");
-		
-		List<Environment> result = query.getResultList();
-		if(result != null){
-			environments.addAll(result);
-		}	
-    	
-    	return environments;
-    }
-    
-    
 
-	/*@Override
-    public void addEnvironment(Environment environment) throws RSSManagerException {
-
+	/**
+	 * @see EnvironmentDAO#addEnvironment(Environment)
+	 */
+	public void addEnvironment(Environment environment) throws RSSDAOException {
 		Connection conn = null;
-        ResultSet rs = null;
-        PreparedStatement stmt = null;
-        try {
-            conn = entityManager.createConnection(true);
-            String sql = "INSERT INTO RM_ENVIRONMENT (NAME) VALUES (?)";
-            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            stmt.setString(1, environment.getName());
-            int rowsCreated = stmt.executeUpdate();
-
-            if (rowsCreated == 0) {
-                throw new RSSManagerException("Failed to add metada related to RSS Environment'" +
-                        environment.getName() + "'");
-            }
-            rs = stmt.getGeneratedKeys();
-            if (rs.next()) {
-                environment.setId(rs.getInt(1));
-            }
-        } catch (SQLException e) {
-            throw new RSSManagerException("Error occurred while creating metadata related to  RSS " +
-                    "environment '" + environment.getName() + "' : " + e.getMessage(), e);
-        } catch (RSSDAOException e) {
-        	throw new RSSManagerException("Error occurred while creating metadata related to  RSS " +
-                    "environment '" + environment.getName() + "' : " + e.getMessage(), e);
+		PreparedStatement statement = null;
+		try {
+			conn = getDataSource().getConnection();
+			String createEnvironmentQuery = "INSERT INTO RM_ENVIRONMENT(NAME) VALUES (?)";
+			statement = conn.prepareStatement(createEnvironmentQuery);
+			statement.setString(1, environment.getName());
+			statement.executeUpdate();
+		} catch (SQLException e) {
+			String msg = "Failed to add environment " + environment.getName() + "to meta repository";
+			log.error(msg, e);
+			throw new RSSDAOException(msg, e);
 		} finally {
-        	RSSDAOUtil.cleanupResources(rs, stmt, conn);
-        }
-    }*/
+			close(statement, RSSManagerConstants.ADD_ENVIRONMENT_ENTRY);
+			close(conn, RSSManagerConstants.ADD_ENVIRONMENT_ENTRY);
+		}
+	}
 
-    @Override
-    public void removeEnvironment(String environmentName) throws RSSManagerException {
-    	Connection conn = null;
-        PreparedStatement stmt = null;
-        try {
-            conn = entityManager.createConnection(true);
-            String sql = "DELETE FROM RM_ENVIRONMENT WHERE NAME = ? ";
-            stmt = conn.prepareStatement(sql);
-            stmt.setString(1, environmentName);
-            stmt.execute();
-        } catch (SQLException e) {
-            throw new RSSManagerException("Error occurred while deleting metadata related to RSS " +
-                    "environment '" + environmentName + "' : " + e.getMessage(), e);
-        } catch (RSSDAOException e) {
-        	throw new RSSManagerException("Error occurred while deleting metadata related to RSS " +
-                    "environment '" + environmentName + "' : " + e.getMessage(), e);
-		}finally {
-        	RSSDAOUtil.cleanupResources(null, stmt, conn);
-        }
-    }
+	/**
+	 * @see EnvironmentDAO#isEnvironmentExist(String)
+	 */
+	public boolean isEnvironmentExist(String environmentName) throws RSSDAOException {
+		boolean isExist = false;
+		Connection conn = null;
+		PreparedStatement statement = null;
+		ResultSet resultSet = null;
+		try {
+			conn = getDataSource().getConnection();
+			String checkEnvironmentExistQuery = "SELECT ID FROM RM_ENVIRONMENT WHERE NAME = ?";
+			statement = conn.prepareStatement(checkEnvironmentExistQuery);
+			statement.setString(1, environmentName);
+			resultSet = statement.executeQuery();
+			if (resultSet.next()) {
+				isExist = true;
+			}
+		} catch (SQLException e) {
+			String msg = "Failed to check environment existence of " + environmentName + "from meta repository";
+			log.error(msg, e);
+			throw new RSSDAOException(msg, e);
+		} finally {
+			close(resultSet, RSSManagerConstants.CHECK_ENVIRONMENT_ENTRY_EXIST);
+			close(statement, RSSManagerConstants.CHECK_ENVIRONMENT_ENTRY_EXIST);
+			close(conn, RSSManagerConstants.CHECK_ENVIRONMENT_ENTRY_EXIST);
+		}
+		return isExist;
+	}
 
-    /*@Override
-    public boolean isEnvironmentExist(String environmentName) throws RSSManagerException {
-    	
-    	ResultSet rs = null;
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        try {
-            conn = entityManager.createConnection(false);
-            String sql = "SELECT 1 AS IS_EXIST FROM RM_ENVIRONMENT WHERE NAME = ?";
-            stmt = conn.prepareStatement(sql);
-            stmt.setString(1, environmentName);
-            rs = stmt.executeQuery();
-            int i = 0;
-            if (rs.next()) {
-                i = rs.getInt("IS_EXIST");
-            }
-            return (i == 1);
-        } catch (SQLException e) {
-            throw new RSSManagerException("Error occurred while checking the existance of RSS " +
-                    "environment '" + environmentName + "' : " + e.getMessage(), e);
-        } catch (RSSDAOException e) {
-        	throw new RSSManagerException("Error occurred while checking the existance of RSS " +
-                    "environment '" + environmentName + "' : " + e.getMessage(), e);
-		}finally {
-        	RSSDAOUtil.cleanupResources(rs, stmt, conn);
-        }
-    }*/
-    
-    
-	private EntityManager getEntityManager() {
-	    return entityManager;
-    }
+	/**
+	 * @see EnvironmentDAO#getEnvironment(String)
+	 */
+	public Environment getEnvironment(String environmentName) throws RSSDAOException {
+		Environment environment = new Environment();
+		Connection conn = null;
+		PreparedStatement statement = null;
+		ResultSet resultSet = null;
+		try {
+			conn = getDataSource().getConnection();
+			String selectEnvironmentQuery = "SELECT * FROM RM_ENVIRONMENT WHERE NAME = ?";
+			statement = conn.prepareStatement(selectEnvironmentQuery);
+			statement.setString(1, environmentName);
+			resultSet = statement.executeQuery();
+			while (resultSet.next()) {
+				environment.setId(resultSet.getInt("ID"));
+				environment.setName(resultSet.getString("NAME"));
+			}
+		} catch (SQLException e) {
+			String msg = "Failed to query environment information of " + environmentName + "from meta repository";
+			log.error(msg, e);
+			throw new RSSDAOException(msg, e);
+		} finally {
+			close(resultSet, RSSManagerConstants.SELECT_ENVIRONMENT_ENTRY);
+			close(statement, RSSManagerConstants.SELECT_ENVIRONMENT_ENTRY);
+			close(conn, RSSManagerConstants.SELECT_ENVIRONMENT_ENTRY);
+		}
+		return environment;
+	}
+
+	/**
+	 * @see EnvironmentDAO#getAllEnvironments()
+	 */
+	public Set<Environment> getAllEnvironments() throws RSSDAOException {
+		Set<Environment> environments = new HashSet<Environment>();
+		Connection conn = null;
+		Environment environment;
+		PreparedStatement statement = null;
+		ResultSet resultSet = null;
+		try {
+			conn = getDataSource().getConnection();
+			String selectAllEnvironmentsQuery = "SELECT * FROM RM_ENVIRONMENT";
+			statement = conn.prepareStatement(selectAllEnvironmentsQuery);
+			resultSet = statement.executeQuery();
+			while (resultSet.next()) {
+				environment = new Environment();
+				environment.setId(resultSet.getInt("ID"));
+				environment.setName(resultSet.getString("NAME"));
+				environments.add(environment);
+			}
+		} catch (SQLException e) {
+			String msg = "Failed to query all environment entries from meta repository";
+			log.error(msg, e);
+			throw new RSSDAOException(msg, e);
+		} finally {
+			close(resultSet, RSSManagerConstants.SELECT_ALL_ENVIRONMENT_ENTRIES);
+			close(statement, RSSManagerConstants.SELECT_ALL_ENVIRONMENT_ENTRIES);
+			close(conn, RSSManagerConstants.SELECT_ALL_ENVIRONMENT_ENTRIES);
+		}
+		return environments;
+	}
+
+	/**
+	 * @see EnvironmentDAO#removeEnvironment(String)
+	 */
+	public void removeEnvironment(String environmentName) throws RSSDAOException {
+		Connection conn = null;
+		PreparedStatement statement = null;
+		try {
+			conn = getDataSource().getConnection();
+			String removeEnvironmentQuery = "DELETE FROM RM_ENVIRONMENT WHERE NAME = ? ";
+			statement = conn.prepareStatement(removeEnvironmentQuery);
+			statement.setString(1, environmentName);
+			statement.execute();
+		} catch (SQLException e) {
+			String msg = "Error occurred while deleting metadata related to RSS environment '" + environmentName;
+			log.error(msg, e);
+			throw new RSSDAOException(msg, e);
+		} finally {
+			close(statement, RSSManagerConstants.REMOVE_ENVIRONMENT_ENTRY);
+			close(conn, RSSManagerConstants.REMOVE_ENVIRONMENT_ENTRY);
+		}
+	}
+
+	/**
+	 * @param connection database connection
+	 * @param task task which was executed before closing the connection
+	 */
+	private void close(Connection connection, String task) {
+		if (connection != null) {
+			try {
+				connection.close();
+			} catch (SQLException e) {
+				log.error("Failed to close connection after " + task, e);
+			}
+		}
+	}
+
+	/**
+	 * Roll back database updates on error
+	 *
+	 * @param connection database connection
+	 * @param task       task which was executing at the error.
+	 */
+	private void rollback(Connection connection, String task) {
+		if (connection != null) {
+			try {
+				connection.rollback();
+			} catch (SQLException e) {
+				log.error("Rollback failed on " + task, e);
+			}
+		}
+	}
+
+	/**
+	 * Close the prepared statement
+	 *
+	 * @param preparedStatement PreparedStatement
+	 * @param task              task which was executed before closing the prepared statement.
+	 */
+	private void close(PreparedStatement preparedStatement, String task) {
+		if (preparedStatement != null) {
+			try {
+				preparedStatement.close();
+			} catch (SQLException e) {
+				log.error("Closing prepared statement failed after " + task, e);
+			}
+		}
+	}
+
+	/**
+	 * Closes the result set
+	 *
+	 * @param resultSet ResultSet
+	 * @param task      task which was executed before closing the result set.
+	 */
+	private void close(ResultSet resultSet, String task) {
+		if (resultSet != null) {
+			try {
+				resultSet.close();
+			} catch (SQLException e) {
+				log.error("Closing result set failed after " + task, e);
+			}
+		}
+	}
+
+	/**
+	 * Get data source
+	 *
+	 * @return data source
+	 */
+	private DataSource getDataSource() {
+		return this.dataSource;
+	}
 
 }

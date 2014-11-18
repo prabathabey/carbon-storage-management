@@ -17,9 +17,9 @@
  *
  */
 
+
 package org.wso2.carbon.rssmanager.core.manager.impl.oracle;
 
-import org.wso2.carbon.rssmanager.core.config.RSSConfig;
 import org.wso2.carbon.rssmanager.core.config.RSSManagementRepository;
 import org.wso2.carbon.rssmanager.core.environment.Environment;
 import org.wso2.carbon.rssmanager.core.manager.AbstractRSSManagerFactory;
@@ -28,16 +28,16 @@ import org.wso2.carbon.rssmanager.core.manager.UserDefinedRSSManager;
 
 public class OracleRSSManagerFactory extends AbstractRSSManagerFactory {
 
-    public OracleRSSManagerFactory(Environment environment, RSSManagementRepository config) {
-        super(environment, config);
-    }
+	public OracleRSSManagerFactory(Environment environment) {
+		super(environment);
+	}
 
-    public SystemRSSManager getSystemRSSManager() {
-        return new OracleSystemRSSManager(getEnvironment(), getConfig());
-    }
+	public SystemRSSManager getSystemRSSManager() {
+		return new OracleSystemRSSManager(getEnvironment());
+	}
 
-    public UserDefinedRSSManager getUserDefinedRSSManager() {
-        return new OracleUserDefinedRSSManager(getEnvironment(), getConfig());
-    }
-    
+	public UserDefinedRSSManager getUserDefinedRSSManager() {
+		return new OracleUserDefinedRSSManager(getEnvironment());
+	}
+
 }

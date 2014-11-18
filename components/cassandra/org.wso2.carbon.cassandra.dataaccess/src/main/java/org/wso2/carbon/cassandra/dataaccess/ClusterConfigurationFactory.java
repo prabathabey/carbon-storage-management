@@ -21,8 +21,10 @@ package org.wso2.carbon.cassandra.dataaccess;
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.utils.CarbonUtils;
 
 import javax.xml.namespace.QName;
+import java.util.Iterator;
 
 /**
  * A factory method to create a <code>ClusterConfiguration</code> instance from the XML configuration
@@ -30,6 +32,7 @@ import javax.xml.namespace.QName;
 public class ClusterConfigurationFactory {
 
     private static Log log = LogFactory.getLog(ClusterConfigurationFactory.class);
+    private static final String EXTERNAL_CASSANDRA_ATTRIBUTE = "externalCassandra";
 
     /**
      * Create an instance of <code>ClusterConfiguration</code> from the XML configuration
@@ -72,14 +75,37 @@ public class ClusterConfigurationFactory {
                 }
             }
 
+            /**
+             * If externalCassandra attribute is not set in the hector configuration, it will assign default value as true
+             *
+             */
             OMElement nodesElement = cluster.getFirstChildWithName(new QName("Nodes"));
             if (nodesElement != null) {
+                Boolean isExternalCassandra = false;
+                String externalCassandra = "";
+	            if (nodesElement.getAttribute(new QName(EXTERNAL_CASSANDRA_ATTRIBUTE)) != null) {
+		            externalCassandra = nodesElement.getAttributeValue(new QName(EXTERNAL_CASSANDRA_ATTRIBUTE));
+	            }
+	            if (externalCassandra != null && !"".equals(externalCassandra)) {
+		            isExternalCassandra = Boolean.parseBoolean(externalCassandra.trim());
+	            } else {
+		            isExternalCassandra = true;
+	            }
                 String nodesString = nodesElement.getText();
                 if (nodesString != null && !"".endsWith(nodesString.trim())) {
-                    clusterConfiguration.setNodesString(nodesString.trim());
-                    String nodes[] = nodesString.split(",");
-                    for (String node : nodes) {
-                        clusterConfiguration.addNode(node);
+                    if(isExternalCassandra) {
+                        clusterConfiguration.setNodesString(nodesString.trim());
+                        String nodes[] = nodesString.split(",");
+                        for (String node : nodes) {
+                            clusterConfiguration.addNode(node);
+                        }
+                    } else {
+                        String host=nodesString.split(":")[0];
+                        int port=Integer.parseInt(nodesString.split(":")[1].trim());
+                        port=port+getPortOffset();
+                        String newNodeString=host+":"+port;
+                        clusterConfiguration.setNodesString(newNodeString.trim());
+                        clusterConfiguration.addNode(newNodeString.trim());
                     }
                 }
             }
@@ -105,5 +131,15 @@ public class ClusterConfigurationFactory {
         }
 
         return clusterConfiguration;
+    }
+
+    /**
+     * Read Carbon Server port offset
+     * @return offset number
+     */
+    private static int getPortOffset() {
+        String portOffset = System.getProperty("portOffset",
+                CarbonUtils.getServerConfiguration().getFirstProperty("Ports.Offset"));
+        return Integer.parseInt(portOffset);
     }
 }

@@ -24,6 +24,8 @@
 <script type="text/javascript" src="js/cassandra_ui_util.js"></script>
 
 <%
+    String envName = (String) session.getAttribute("envName");
+    String clusterName = (String) session.getAttribute("clusterName");
     String name = request.getParameter("name");
     String rf = request.getParameter("rf");
     String rs = request.getParameter("rs");
@@ -34,6 +36,8 @@
         CassandraKeyspaceAdminClient cassandraKeyspaceAdminClient = new CassandraKeyspaceAdminClient(config.getServletContext(), session);
         KeyspaceInformation keyspaceInformation = new KeyspaceInformation();
         keyspaceInformation.setName(name);
+        keyspaceInformation.setEnvironmentName(envName);
+        keyspaceInformation.setClusterName(clusterName);
         int replicationFactor = 1;
         if (rf != null && !"".equals(rf.trim())) {
             try {
